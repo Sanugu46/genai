@@ -1,0 +1,18 @@
+/genai/(?<provider>[^/]+)/(?<deployment_id>[^/]+)/chat/completions
+
+
+/genai/azure/gpt-4/chat/completions
+/genai/aws/claude-v2/chat/completions
+/genai/openai/gpt-4o/chat/completions
+
+---------------
+Kong’s routing configuration, not in your OpenAPI spec.
+
+🔍 It tells Kong:
+“Match a request like /genai/azure/gpt-4o/chat/completions and extract the provider and deployment_id parts from the URL.”
+
+These named capture groups (?<provider> and ?<deployment_id>) allow you to:
+
+Dynamically route requests to different upstream services or paths
+
+Use those values in Kong plugins, like request transformation or logging

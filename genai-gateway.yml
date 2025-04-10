@@ -1,147 +1,175 @@
 openapi: 3.0.1
 info:
-  title: Internal Azure OpenAI Proxy
-  description: Generic proxy for Azure OpenAI GPT models (gpt-35-turbo, gpt-4, gpt-4o, etc.)
+  title: GenAI Gateway API
+  description: Unified gateway API over Azure OpenAI and AWS Bedrock (Anthropic, Cohere), using Kong Gateway.
   version: 1.0.2
 
 servers:
-  - url: https://your-internal-gateway-domain.com
+  - url: https://genai.internal.company.com
 
 paths:
-  /azure/openai/{deployment_id}/chat/completions:
+  /genai/{provider}/{deployment_id}/chat/completions:
     post:
-      summary: Chat completion for any GPT model via Azure OpenAI
-      operationId: azureGenericChatCompletion
-      tags:
-        - ChatCompletion
+      summary: Unified Chat Completion Endpoint
       parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+          description: AI provider (azure, bedrock-anthropic, bedrock-cohere)
         - name: deployment_id
           in: path
           required: true
           schema:
             type: string
-          description: Name of the deployed GPT model (e.g., gpt-4, gpt-35-turbo, gpt-4o)
-        - $ref: '#/components/parameters/projectnumHeader'
-        - $ref: '#/components/parameters/projectnameHeader'
+          description: Model deployment name (e.g., gpt-4o, claude-v2, command-r)
+        - $ref: '#/components/parameters/ProjectNumHeader'
+        - $ref: '#/components/parameters/ProjectNameHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ChatCompletionRequest'
+              $ref: '#/components/schemas/ChatRequest'
             examples:
-              example1:
+              azure:
+                summary: Azure OpenAI (GPT-4o)
+                value:
+                  messages:
+                    - role: system
+                      content: You are a helpful assistant.
+                    - role: user
+                      content: What's the weather today?
+                  temperature: 0.7
+              anthropic:
+                summary: Bedrock Anthropic (Claude)
                 value:
                   messages:
                     - role: user
-                      content: "What is the weather today?"
-                  temperature: 0.7
-                  max_tokens: 100
-                  top_p: 1.0
-                  frequency_penalty: 0.0
-                  presence_penalty: 0.0
+                      content: Tell me a joke.
+              cohere:
+                summary: Bedrock Cohere (Command R)
+                value:
+                  messages:
+                    - role: user
+                      content: Summarize the following paragraph...
       responses:
         '200':
-          description: Successful completion
+          description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ChatCompletionResponse'
-              examples:
-                example1:
-                  value:
-                    id: "chatcmpl-123"
-                    created: 1681234567
-                    model: "gpt-4"
-                    choices:
-                      - index: 0
-                        message:
-                          role: assistant
-                          content: "The weather today is sunny."
-                        finish_reason: "stop"
-                    usage:
-                      prompt_tokens: 10
-                      completion_tokens: 20
-                      total_tokens: 30
+                $ref: '#/components/schemas/ChatResponse'
         '400':
-          description: Bad Request - Missing required headers
+          description: Missing required headers or malformed request
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: "Missing required header: projectnum or projectname"
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: "Rate limit exceeded. Please try again later."
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: "Unauthorized. Invalid or missing API key."
         '500':
-          description: Server error
+          description: Internal server error
+      security:
+        - ApiKeyAuth: []
+
+  /genai/{provider}/{deployment_id}/embeddings:
+    post:
+      summary: Unified Embedding Endpoint
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+          description: AI provider (azure, bedrock-cohere)
+        - name: deployment_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Model deployment name (e.g., text-embedding-ada-002, embed-english-v3.0)
+        - $ref: '#/components/parameters/ProjectNumHeader'
+        - $ref: '#/components/parameters/ProjectNameHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [input]
+              properties:
+                input:
+                  type: string
+            examples:
+              azure:
+                summary: Azure Embeddings
+                value:
+                  input: The quick brown fox.
+              cohere:
+                summary: Bedrock Cohere Embeddings
+                value:
+                  input: AI is transforming the world.
+      responses:
+        '200':
+          description: Successful response
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  error:
-                    type: string
-                    example: "Internal server error. Please contact support."
+                  embedding:
+                    type: array
+                    items:
+                      type: number
+        '400':
+          description: Missing required headers or malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+        '500':
+          description: Internal server error
       security:
-        - azureApiKey: []
+        - ApiKeyAuth: []
 
 components:
   parameters:
-    projectnumHeader:
-      name: projectnum
+    ProjectNumHeader:
+      name: projectNum
       in: header
       required: true
       schema:
         type: string
-      description: Project number identifier header
-    projectnameHeader:
-      name: projectname
+      description: Internal project number for governance
+
+    ProjectNameHeader:
+      name: projectName
       in: header
       required: true
       schema:
         type: string
-      description: Project name or client identifier header
+      description: Internal project name for governance
 
   securitySchemes:
-    azureApiKey:
+    ApiKeyAuth:
       type: apiKey
       in: header
       name: api-key
 
   schemas:
-    ChatCompletionRequest:
+    ChatRequest:
       type: object
-      required:
-        - messages
+      required: [messages]
       properties:
         messages:
           type: array
           items:
             type: object
-            required:
-              - role
-              - content
+            required: [role, content]
             properties:
               role:
                 type: string
@@ -150,61 +178,34 @@ components:
                 type: string
         temperature:
           type: number
-          default: 0.7
-          minimum: 0
-          maximum: 1
         max_tokens:
           type: integer
-          default: 100
-          minimum: 1
-          maximum: 2048
         top_p:
           type: number
-          default: 1.0
-          minimum: 0
-          maximum: 1
         frequency_penalty:
           type: number
-          default: 0.0
-          minimum: 0
-          maximum: 2
         presence_penalty:
           type: number
-          default: 0.0
-          minimum: 0
-          maximum: 2
 
-    ChatCompletionResponse:
+    ChatResponse:
       type: object
       properties:
-        id:
-          type: string
-        created:
-          type: integer
         model:
           type: string
-        choices:
-          type: array
-          items:
-            type: object
-            properties:
-              index:
-                type: integer
-              message:
-                type: object
-                properties:
-                  role:
-                    type: string
-                  content:
-                    type: string
-              finish_reason:
-                type: string
-        usage:
+        output:
+          type: string
+        provider_response:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
           type: object
           properties:
-            prompt_tokens:
-              type: integer
-            completion_tokens:
-              type: integer
-            total_tokens:
-              type: integer
+            message:
+              type: string
+              example: Missing required header: projectNum
+            type:
+              type: string
+              example: invalid_request_error
