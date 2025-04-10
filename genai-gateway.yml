@@ -2,28 +2,22 @@ openapi: 3.0.1
 info:
   title: GenAI Gateway API
   description: Unified gateway API over Azure OpenAI and AWS Bedrock (Anthropic, Cohere), using Kong Gateway.
-  version: 1.0.2
+  version: 1.0.3
 
 servers:
   - url: https://genai.internal.company.com
 
 paths:
-  /genai/{provider}/{deployment_id}/chat/completions:
+  /genai/azure/{deployment_id}/chat/completions:
     post:
-      summary: Unified Chat Completion Endpoint
+      summary: Azure OpenAI Chat Completion Endpoint
       parameters:
-        - name: provider
-          in: path
-          required: true
-          schema:
-            type: string
-          description: AI provider (azure, bedrock-anthropic, bedrock-cohere)
         - name: deployment_id
           in: path
           required: true
           schema:
             type: string
-          description: Model deployment name (e.g., gpt-4o, claude-v2, command-r)
+          description: Azure OpenAI model deployment ID (e.g., gpt-4o)
         - $ref: '#/components/parameters/ProjectNumHeader'
         - $ref: '#/components/parameters/ProjectNameHeader'
       requestBody:
@@ -42,12 +36,90 @@ paths:
                     - role: user
                       content: What's the weather today?
                   temperature: 0.7
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+        '400':
+          description: Missing required headers or malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+        '500':
+          description: Internal server error
+      security:
+        - ApiKeyAuth: []
+
+  /genai/bedrock/anthropic/{deployment_id}/chat/completions:
+    post:
+      summary: Bedrock Anthropic Chat Completion Endpoint (Claude)
+      parameters:
+        - name: deployment_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Bedrock Anthropic model deployment ID (e.g., claude-v2)
+        - $ref: '#/components/parameters/ProjectNumHeader'
+        - $ref: '#/components/parameters/ProjectNameHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
               anthropic:
                 summary: Bedrock Anthropic (Claude)
                 value:
                   messages:
                     - role: user
                       content: Tell me a joke.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+        '400':
+          description: Missing required headers or malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+        '500':
+          description: Internal server error
+      security:
+        - ApiKeyAuth: []
+
+  /genai/bedrock/cohere/{deployment_id}/chat/completions:
+    post:
+      summary: Bedrock Cohere Chat Completion Endpoint (Command R)
+      parameters:
+        - name: deployment_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Bedrock Cohere model deployment ID (e.g., command-r)
+        - $ref: '#/components/parameters/ProjectNumHeader'
+        - $ref: '#/components/parameters/ProjectNameHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
               cohere:
                 summary: Bedrock Cohere (Command R)
                 value:
@@ -74,22 +146,16 @@ paths:
       security:
         - ApiKeyAuth: []
 
-  /genai/{provider}/{deployment_id}/embeddings:
+  /genai/azure/{deployment_id}/embeddings:
     post:
-      summary: Unified Embedding Endpoint
+      summary: Azure OpenAI Embedding Endpoint
       parameters:
-        - name: provider
-          in: path
-          required: true
-          schema:
-            type: string
-          description: AI provider (azure, bedrock-cohere)
         - name: deployment_id
           in: path
           required: true
           schema:
             type: string
-          description: Model deployment name (e.g., text-embedding-ada-002, embed-english-v3.0)
+          description: Azure OpenAI embeddings deployment ID (e.g., text-embedding-ada-002)
         - $ref: '#/components/parameters/ProjectNumHeader'
         - $ref: '#/components/parameters/ProjectNameHeader'
       requestBody:
@@ -107,6 +173,54 @@ paths:
                 summary: Azure Embeddings
                 value:
                   input: The quick brown fox.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  embedding:
+                    type: array
+                    items:
+                      type: number
+        '400':
+          description: Missing required headers or malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+        '500':
+          description: Internal server error
+      security:
+        - ApiKeyAuth: []
+
+  /genai/bedrock/cohere/{deployment_id}/embeddings:
+    post:
+      summary: Bedrock Cohere Embedding Endpoint
+      parameters:
+        - name: deployment_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cohere model deployment ID (e.g., embed-english-v3.0)
+        - $ref: '#/components/parameters/ProjectNumHeader'
+        - $ref: '#/components/parameters/ProjectNameHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [input]
+              properties:
+                input:
+                  type: string
+            examples:
               cohere:
                 summary: Bedrock Cohere Embeddings
                 value:

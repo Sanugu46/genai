@@ -1,18 +1,48 @@
-/genai/(?<provider>[^/]+)/(?<deployment_id>[^/]+)/chat/completions
+Path Structure
+The base path is /genai/{provider}/{deployment_id}/{action}, where {provider} can be:
 
+azure for Azure OpenAI models (chat, embeddings).
 
-/genai/azure/gpt-4/chat/completions
-/genai/aws/claude-v2/chat/completions
-/genai/openai/gpt-4o/chat/completions
+bedrock for Bedrock models (with sub-providers like anthropic and cohere).
 
----------------
-Kong’s routing configuration, not in your OpenAPI spec.
+{deployment_id} represents the specific deployment or model identifier (like gpt-4o, claude-v2, command-r).
 
-🔍 It tells Kong:
-“Match a request like /genai/azure/gpt-4o/chat/completions and extract the provider and deployment_id parts from the URL.”
+{action} refers to the type of API request, either chat/completions or embeddings.
 
-These named capture groups (?<provider> and ?<deployment_id>) allow you to:
+Validation:
+Path Parameters
 
-Dynamically route requests to different upstream services or paths
+The path parameters are correctly defined for the OpenAPI spec: {provider} and {deployment_id} are extracted from the URL.
 
-Use those values in Kong plugins, like request transformation or logging
+The {provider} parameter is used to distinguish between the different LLM services (Azure, Bedrock Anthropic, Bedrock Cohere).
+
+The {deployment_id} is used to specify the specific deployment model to interact with.
+
+Specifying Actions
+
+The paths are clearly divided by actions: chat/completions and embeddings.
+
+This makes it possible to separate and define unique operations for each AI provider.
+
+Paths Overview
+1. Azure OpenAI (Chat and Embeddings)
+Chat Completion:
+
+/genai/azure/{deployment_id}/chat/completions
+
+Embedding:
+
+/genai/azure/{deployment_id}/embeddings
+
+2. Bedrock Anthropic (Claude) (Chat Completion)
+/genai/bedrock/anthropic/{deployment_id}/chat/completions
+
+3. Bedrock Cohere (Command R) (Chat Completion and Embedding)
+Chat Completion:
+
+/genai/bedrock/cohere/{deployment_id}/chat/completions
+
+Embedding:
+
+/genai/bedrock/cohere/{deployment_id}/embeddings
+
